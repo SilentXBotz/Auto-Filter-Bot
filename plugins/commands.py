@@ -488,19 +488,46 @@ async def delete_all_index_confirm(bot, message):
 
 @Client.on_message(filters.command('settings'))
 async def settings(client, message):
-    userid = message.from_user.id if message.from_user else None
-    if not userid:
-        return await message.reply(f"ʏᴏᴜ'ʀᴇ ᴀɴᴏɴʏᴍᴏᴜꜱ ᴀᴅᴍɪɴ.\nᴜꜱᴇ /connect {message.chat.id} ɪɴ ᴘᴍ.")
+    user_id = message.from_user.id if message.from_user else None
+    if not user_id:
+        return await message.reply(f"ʏᴏᴜ'ʀᴇ ᴀɴᴏɴʏᴍᴏᴜꜱ ᴀᴅᴍɪɴ.")
     chat_type = message.chat.type
-    if chat_type not in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-        return await message.reply_text("<b>ᴜꜱᴇ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ɪɴ ɢʀᴏᴜᴘ.</b>")
-    grp_id = message.chat.id
-    if not await is_check_admin(client, grp_id, message.from_user.id):
-        return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+    if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        grp_id = message.chat.id
+        if not await is_check_admin(client, grp_id, message.from_user.id):
+            return await message.reply_text('<b>ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴅᴍɪɴ ɪɴ ᴛʜɪꜱ ɢʀᴏᴜᴘ</b>')
+        btn = [[
+                InlineKeyboardButton("👤 ᴏᴘᴇɴ ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛ 👤", callback_data=f"opnsetpm#{grp_id}")
+              ],[
+                InlineKeyboardButton("👥 ᴏᴘᴇɴ ʜᴇʀᴇ 👥", callback_data=f"opnsetgrp#{grp_id}")
+              ]]
+        await message.reply_text(
+                text="<b>ᴡʜᴇʀᴇ ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴏᴘᴇɴ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ? ⚙️</b>",
+                reply_markup=InlineKeyboardMarkup(btn),
+                disable_web_page_preview=True,
+                parse_mode=enums.ParseMode.HTML,
+                reply_to_message_id=message.id
+        )
+    elif chat_type == enums.ChatType.PRIVATE:
+        connected_groups = db.get_connected_grps(user_id)
+        if not connected_groups:
+            return await message.reply_text("No Connected Groups Found .")
+        group_list = []
+        for group in connected_groups:
+            try:
+                silentx = await client.get_chat(group)
+                buttons.append([
+                    InlineKeyboardButton(text=silentx.title, callback_data=f"grp_pm#{silentx.id}")
+                ])
+            except Exception as e:
+                print(f"Error In PM Settings Button - {e}")
+                pass
+        await message.reply_text('Here Is Your Connected Groups.', reply_markup=InlineKeyboardMarkup(buttons))
+        
+                                                                                                     
+async def group_setting_buttons(grp_id):
     settings = await get_settings(grp_id)
-    title = message.chat.title
-    if settings is not None:
-        buttons = [[
+    buttons = [[
                 InlineKeyboardButton('ʀᴇꜱᴜʟᴛ ᴘᴀɢᴇ', callback_data=f'setgs#button#{settings.get("button")}#{grp_id}',),
                 InlineKeyboardButton('ʙᴜᴛᴛᴏɴ' if settings.get("button") else 'ᴛᴇxᴛ', callback_data=f'setgs#button#{settings.get("button")}#{grp_id}',),
             ],[
@@ -529,31 +556,29 @@ async def settings(client, message):
                 InlineKeyboardButton('10' if settings["max_btn"] else f'{MAX_B_TN}', callback_data=f'setgs#max_btn#{settings["max_btn"]}#{grp_id}',),
             ],[
                 InlineKeyboardButton('⇋ ᴄʟᴏꜱᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ⇋', callback_data='close_data')
-            ]
-        ]        
-        btn = [[
-                InlineKeyboardButton("👤 ᴏᴘᴇɴ ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛ 👤", callback_data=f"opnsetpm#{grp_id}")
-              ],[
-                InlineKeyboardButton("👥 ᴏᴘᴇɴ ʜᴇʀᴇ 👥", callback_data=f"opnsetgrp#{grp_id}")
-              ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        if chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-            await message.reply_text(
-                text="<b>ᴡʜᴇʀᴇ ᴅᴏ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴏᴘᴇɴ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴇɴᴜ ? ⚙️</b>",
-                reply_markup=InlineKeyboardMarkup(btn),
-                disable_web_page_preview=True,
-                parse_mode=enums.ParseMode.HTML,
-                reply_to_message_id=message.id
-            )
-        else:
-            await message.reply_text(
-                text=f"<b>ᴄʜᴀɴɢᴇ ʏᴏᴜʀ ꜱᴇᴛᴛɪɴɢꜱ ꜰᴏʀ {title} ᴀꜱ ʏᴏᴜ ᴡɪꜱʜ ⚙</b>",
-                reply_markup=reply_markup,
-                disable_web_page_preview=True,
-                parse_mode=enums.ParseMode.HTML,
-                reply_to_message_id=message.id
-            )
+    ]]
+    return buttons
 
+@Client.on_message(filters.command('connect'))
+async def connect_group(client, message):
+    user_id = message.from_user.id
+    if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        db.connect_group(message.chat.id, user_id)
+        await message.reply_text("Group linked to PM. Use /settings in PM to manage.")
+    elif message.chat.type == enums.ChatType.PRIVATE:
+        if len(message.command) < 2:
+            await message.reply_text("Use: /connect <group_id> or run in group")
+            return
+        try:
+            group_id = int(message.command[1])
+            if not await is_check_admin(client, group_id, user_id):
+                await message.reply_text("You're not admin in that group.")
+                return
+            chat = await client.get_chat(group_id)
+            db.connect_group(group_id, user_id)
+            await message.reply_text(f"Linked {chat.title} to PM.")
+        except:
+            await message.reply_text("Invalid group ID or error occurred.")
 
 @Client.on_message((filters.command(["request", "Request"]) | filters.regex("#request") | filters.regex("#Request")) & filters.group)
 async def requests(bot, message):
