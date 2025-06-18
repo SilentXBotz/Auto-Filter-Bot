@@ -17,6 +17,7 @@ class Database:
         self.misc = self.db.misc
         self.verify_id = self.db.verify_id 
         self.codes = self.db.codes
+        self.connection = data_db.connections
 
     async def find_join_req(self, id):
         return bool(await self.req.find_one({'id': id})) 
@@ -368,6 +369,21 @@ class Database:
             {'$set': {setting_key: value}}, 
             upsert=True
         )
+
+    async def connect_group(self, group_id, user_id):
+        user= self.connection.find_one({'_id': user_id})
+        if user:
+            if group_id not in user["group_ids"]:
+                self.connection.update_one({'_id': user_id}, {"$push": {"group_ids": group_id}})
+        else:
+            self.connection.insert_one({'_id': user_id, 'group_ids': [group_id]})
+
+    async def get_connected_grps(self, user_id):
+        user = self.connection.find_one({'_id': user_id})
+        if user:
+            return user["group_ids"]
+        else:
+            return []
 
     async def pm_search_status(self, bot_id):
         return await self.get_bot_setting(bot_id, 'PM_SEARCH', PM_SEARCH)
