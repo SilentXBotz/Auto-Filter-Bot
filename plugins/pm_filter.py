@@ -26,6 +26,7 @@ from database.topdb import silentdb
 import requests
 import string
 import tracemalloc
+from plugins.commands import group_setting_buttons
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -1525,6 +1526,17 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 reply_markup=reply_markup,
                 parse_mode=enums.ParseMode.HTML 
             )
+
+	elif query.data.startswith("grp_pm"):
+        _, grp_id = query.data.split("#")
+        user_id = query.from_user.id if query.from_user else None
+        if not await is_check_admin(client, int(grp_id), user_id):
+            return await query.answer("You not admin in this group.", show_alert=True)
+        btn = await group_setting_buttons(int(grp_id))
+        silentx = await client.get_chat(int(grp_id))
+        await query.message.edit(text=f"Change your settings for <b>'{silentx.title}'</b> as your wish. ⚙", reply_markup=InlineKeyboardMarkup(btn))		
+
+	
     elif query.data.startswith("setgs"):
         ident, set_type, status, grp_id = query.data.split("#")
         userid = query.from_user.id if query.from_user else None
